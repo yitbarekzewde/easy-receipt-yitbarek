@@ -75,7 +75,13 @@
             <div id="receipt-ui"></div>
         </div>
     </div>
+    <button style="background:#3b82f6; margin-top:15px;" onclick="window.downloadReceipt()">Download Receipt</button>
 </div>
+    <div style="text-align:center; margin-top:20px; font-size:10px; color:lab(85.44% -82.47 80.94);">
+    &copy; 2026 Tanala Mini Shop. All rights reserved.
+
+</div>
+    
 
 <script>
     let cart = [];
@@ -205,6 +211,15 @@
     cart = [{id:1, name:'Sample Product', price:1, qty:1}];
     render();
     document.querySelectorAll('input').forEach(el => el.oninput = updateUI);
+
+    // Generate receipt image on load to ensure QR code is rendered
+    window.downloadReceipt = async function() {
+        const blob = await generateBlob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'receipt.png';
+        a.click();
+    }
 </script>
 </body>
 </html>
