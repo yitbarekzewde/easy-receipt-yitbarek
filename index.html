@@ -68,6 +68,7 @@
 
         <button class="btn-view" onclick="viewImage()"><i class="fas fa-image"></i> View/Download Receipt</button>
         <button class="btn-share" onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i> Share to WhatsApp</button>
+         <button style="background:#ef4444;" class="clear-all-carts" onclick="clearAllCarts(); cart = []; render();">Clear All Carts</button>
     </div>
 
     <div class="preview-side">
@@ -212,14 +213,43 @@
     render();
     document.querySelectorAll('input').forEach(el => el.oninput = updateUI);
 
+   
     // Generate receipt image on load to ensure QR code is rendered
     window.downloadReceipt = async function() {
-        const blob = await generateBlob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'receipt.png';
-        a.click();
+        try {
+            const blob = await generateBlob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'receipt.png';
+            a.click();
+           alert("Receipt downloaded successfully!");
+        } catch (e) {
+            alert("Failed to download receipt.");
+            console.error(e);
+        }
     }
+     // 1. Find the element with the class 'clear-all-carts'
+        const clearCartButton = document.querySelector('.clear-all-carts');
+
+        // 2. Check if the button actually exists on the page
+        if (clearCartButton) {
+            // 3. Listen for a click event
+            clearCartButton.addEventListener('click', function (event) {
+
+                // 4. Show the built-in browser confirmation box
+                const userConfirmed = confirm("Are you sure you want to clear your cart? This cannot be undone.");
+
+                // 5. If the user clicks "Cancel", stop the action
+                if (!userConfirmed) {
+                    event.preventDefault(); // Stops the link/form from triggering
+                } else {
+                    // If they clicked "OK", let the default action happen 
+                    // or trigger your own clear cart logic here.
+                }
+            });
+        }
+
+
 </script>
 </body>
 </html>
