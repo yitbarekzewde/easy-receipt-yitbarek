@@ -1,947 +1,773 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Easy Receipt | Smart QR</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        :root {
-            --primary: #f97316;
-            --dark: #0f172a;
-        }
+        :root { --primary: #f97316; --dark: #0f172a; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f1f5f9; font-family: system-ui, sans-serif; padding: 10px; }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .sticky-continer {
+            display: flex; position: sticky; top: 0;
+            background-color: #25d366; height: 60px; width: 100%;
+            border-bottom-right-radius: 20px; border-bottom-left-radius: 20px;
+            align-items: center; justify-content: space-between;
+            padding: 0 15px; z-index: 100; margin-bottom: 10px;
         }
-
-        body {
-            background: #f1f5f9;
-            font-family: system-ui, sans-serif;
-            padding: 10px;
+        .menu-btn {
+            font-size: 24px; color: white; cursor: pointer;
+            padding: 8px 12px; background: rgba(255,255,255,0.15);
+            border-radius: 8px; position: relative;
         }
+        .menu-btn .fa-bars { color: white; }
+        #dropdown {
+            display: none; position: absolute; top: 110%; left: 0;
+            background: white; list-style: none; padding: 8px;
+            border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            min-width: 220px; z-index: 999;
+        }
+        #dropdown li {
+            padding: 10px 12px; cursor: pointer; border-radius: 6px;
+            font-size: 13px; color: #1e293b; display: flex; align-items: center;
+            gap: 10px; transition: background 0.15s; font-weight: 500;
+        }
+        #dropdown li:hover { background: #f1f5f9; }
+        #dropdown li i { width: 16px; text-align: center; }
 
+        .profile-container { display: flex; align-items: center; gap: 8px; }
+        .profile-container .fa-user-circle { color: white; font-size: 30px; cursor: pointer; }
+        #user-display-name { font-size: 12px; font-weight: bold; color: white; }
 
         .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 15px;
+            max-width: 1100px; margin: 0 auto;
+            display: grid; grid-template-columns: 1.2fr 1fr; gap: 15px;
         }
+        .panel { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
 
-        .panel {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        input, textarea {
+            width: 100%; padding: 12px; margin-bottom: 8px;
+            border: 1px solid #ddd; border-radius: 8px;
+            font-size: 14px; color: #000 !important; background: white;
         }
+        .qty-box { width: 65px; font-weight: bold; text-align: center; border: 1px solid var(--primary); }
+        .item-row { display: grid; grid-template-columns: 2fr 1fr 65px auto; gap: 5px; margin-bottom: 5px; align-items: center; }
 
-        .profile-container {
-            display: flex;
-            justify-content: end;
-            align-items: end;
-            text-align: end;
-            justify-items: end;
-            justify-self: end;
-            justify-content: flex-end;
-            margin-bottom: 10px;
-            gap:
+        .preview-side { display: flex; flex-direction: column; align-items: center; position: sticky; top: 70px; }
 
-        }
-
-        .fa-user-circle {
-            color: var(--primary);
-            font-size: 30px;
-            cursor: pointer;
-        }
-
-        #user-display-name {
-            font-size: 12px;
-            font-weight: bold;
-            color: var(--dark);
-        }
-
-        input,
-        textarea {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 8px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #000 !important;
-            background: white;
-        }
-
-        .qty-box {
-            width: 65px;
-            font-weight: bold;
-            text-align: center;
-            border: 1px solid var(--primary);
-        }
-
-        .item-row {
-            display: grid;
-            grid-template-columns: 2fr 1fr 65px auto;
-            gap: 5px;
-            margin-bottom: 5px;
-            align-items: center;
-        }
-
-        .preview-side {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: sticky;
-            top: 10px;
-        }
-
+        /* ── RECEIPT BOX ── */
         #receipt-box {
-            background: white;
-            padding: 35px 20px;
-            width: 100%;
-            max-width: 400px;
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            background: white; padding: 25px 18px; width: 100%; max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace; color: #000;
         }
+        .receipt-header { text-align: center; margin-bottom: 10px; }
+        .receipt-header h1 { color: var(--primary); text-transform: uppercase; font-size: 20px; margin-bottom: 4px; }
+        .receipt-header p { font-size: 10px; color: #444; }
+        .receipt-divider-dashed { border-top: 1px dashed #000; margin: 8px 0; }
+        .receipt-divider-solid { border-top: 1px solid #000; margin: 8px 0; }
+        .receipt-client { text-align: left; font-size: 11px; margin-bottom: 6px; }
+        .receipt-table { width: 100%; font-size: 10px; border-collapse: collapse; margin: 10px 0; }
+        .receipt-table th { text-align: left; padding-bottom: 5px; border-bottom: 1px solid #000; font-weight: bold; }
+        .receipt-table th:not(:first-child) { text-align: right; }
+        .receipt-table td { padding: 3px 0; vertical-align: top; }
+        .receipt-table td:not(:first-child) { text-align: right; }
+        .receipt-item-name { white-space: pre-wrap; }
+        .receipt-total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 17px; padding-top: 6px; }
+        .receipt-change-row { display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; }
+        .receipt-footer { text-align: center; margin-top: 20px; }
+        .receipt-footer p { font-size: 8px; color: #666; margin-top: 8px; }
+        .receipt-footer .by-line { font-size: 8px; color: #008000; margin-top: 4px; }
+        #qr-place { display: flex; justify-content: center; margin-top: 10px; }
+        #qr-place canvas, #qr-place img { display: block; }
 
         button {
-            padding: 14px;
-            border-radius: 10px;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 8px;
-            color: white;
+            padding: 14px; border-radius: 10px; border: none;
+            font-weight: bold; cursor: pointer; width: 100%; margin-top: 8px; color: white;
         }
+        .btn-view { background: var(--dark); }
+        .btn-share { background: #25d366; }
+        .btn-import { background: var(--primary); }
+        .btn-save { background: #06b6d4; }
 
-        .btn-view {
-            background: var(--dark);
-        }
-
-        .btn-share {
-            background: #25d366;
-        }
-
-        .btn-import {
-            background: var(--primary);
-        }
-
-        .btn-save {
-            background: #06b6d4;
-        }
-
-        .receipt-item-name {
-            text-align: left;
-            padding: 5px 0;
-            white-space: pre-wrap;
-            font-size: 11px;
-        }
-
-        /* Modal Styles for Registration/Auth & Statements */
         .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+            justify-content: center; align-items: center; z-index: 1000;
         }
-
         .modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 85vh;
-            overflow-y: auto;
-            position: relative;
+            background: white; border-radius: 15px;
+            max-width: 560px; width: 94%; max-height: 90vh; overflow-y: auto; position: relative;
         }
+        .close-modal { position: absolute; top: 12px; right: 16px; font-size: 22px; cursor: pointer; color: #64748b; z-index: 10; }
+        .close-modal:hover { color: #ef4444; }
 
-        .close-modal {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 20px;
-            cursor: pointer;
+        .modal-tabs {
+            display: flex; border-bottom: 2px solid #e2e8f0;
+            background: #f8fafc; border-radius: 15px 15px 0 0; overflow-x: auto;
         }
-
-        /* Drafts & History Section */
-        .drafts-section {
-            margin-top: 15px;
-            padding: 10px;
-            background: #f8fafc;
-            border-radius: 8px;
-            border: 1px dashed #cbd5e1;
+        .modal-tab {
+            flex: 1; padding: 14px 8px; text-align: center; font-size: 11px;
+            font-weight: 600; color: #64748b; cursor: pointer;
+            border-bottom: 3px solid transparent; transition: all 0.2s;
+            white-space: nowrap; min-width: 80px;
         }
+        .modal-tab:hover { color: var(--primary); background: #fff; }
+        .modal-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }
+        .modal-tab i { display: block; font-size: 16px; margin-bottom: 4px; }
 
+        .modal-panel { display: none; padding: 20px; }
+        .modal-panel.active { display: block; }
+
+        .statement-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        .statement-table th, .statement-table td { padding: 8px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .statement-table th { background: #f1f5f9; font-weight: bold; }
+
+        .drafts-section { margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; }
         .draft-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px;
-            background: white;
-            margin-bottom: 5px;
-            border-radius: 5px;
-            font-size: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 10px; background: white; margin-bottom: 6px;
+            border-radius: 8px; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
+        .draft-actions i { cursor: pointer; margin-left: 10px; font-size: 14px; }
 
-        .draft-actions i {
-            cursor: pointer;
-            margin-left: 8px;
+        .downloaded-item {
+            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+            padding: 12px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center;
         }
+        .downloaded-item img { width: 70px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; cursor: pointer; }
+        .downloaded-item-info { flex: 1; font-size: 12px; }
+        .downloaded-item-info b { font-size: 13px; color: var(--dark); }
+        .downloaded-item-info p { color: #64748b; margin-top: 3px; }
+        .downloaded-item-actions { display: flex; flex-direction: column; gap: 6px; }
+        .downloaded-item-actions button { padding: 6px 10px; font-size: 11px; margin: 0; width: auto; }
 
-        /* Statements Table View */
-        .statement-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 12px;
-        }
-
-        .statement-table th,
-        .statement-table td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .statement-table th {
-            background: #f1f5f9;
-            font-weight: bold;
-        }
+        .empty-state { text-align: center; padding: 30px 20px; color: #94a3b8; }
+        .empty-state i { font-size: 40px; margin-bottom: 10px; display: block; }
+        .empty-state p { font-size: 13px; }
 
         @media (max-width: 768px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-
-            .preview-side {
-                position: static;
-                margin-top: 20px;
-            }
+            .container { grid-template-columns: 1fr; }
+            .preview-side { position: static; margin-top: 20px; }
         }
-        /* Fixed Menu Positioning */
-    .sticky-continer {
-    display: flex;
-    position: sticky;
-    top: 0;
-    background-color: #25d366;
-    height: 60px;
-    width: 100%;
-    border-bottom-right-radius: 20px;
-    border-bottom-left-radius: 20px;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 15px;
-    z-index: 100;
-}
-
-.profile-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-#user-display-name {
-    font-size: 12px;
-    font-weight: bold;
-    color: white;
-}
-
-.fa-user-circle {
-    color: white;
-    font-size: 30px;
-    cursor: pointer;
-}
-
-.menu-btn {
-    font-size: 24px;
-    color: white;
-    cursor: pointer;
-    padding: 8px 12px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 8px;
-    position: relative;  /* ← anchors dropdown correctly */
-}
-
-.menu-btn .fa-bars {
-    color: white;
-}
-
-#dropdown {
-    display: none;
-    position: absolute;
-    top: 110%;
-    left: 0;
-    background: white;
-    list-style: none;
-    padding: 8px;
-    border-radius: 10px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    min-width: 200px;
-    z-index: 999;  /* ← sits above everything */
-}
-
-#dropdown li {
-    padding: 8px 12px;
-    cursor: pointer;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #1e293b;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: background 0.15s;
-}
-
-#dropdown li:hover {
-    background: #f1f5f9;
-}
     </style>
 </head>
-
 <body>
-   <div class="top">
-    <div class="sticky-continer">
-        <div class="menu-btn" id="menu-btn">
-            <i class="fa fa-bars" onclick="toggleDropdown(event)"></i>
-            <ul id="dropdown">
-                <li onclick="toggleStatementPanel(); toggleDropdown(event)">
-                    <i class="fas fa-file-invoice-dollar" style="color:var(--primary);"></i> View Statements
-                </li>
-                <li onclick="openProfileModal(); toggleDropdown(event)">
-                    <i class="fas fa-save" style="color:var(--primary);"></i> Saved Drafts
-                </li>
-                <li onclick="openProfileModal(); toggleDropdown(event)">
-                    <i class="fas fa-user-circle" style="color:var(--primary);"></i> Manage Profile
-                </li>
-                <li onclick="DownloadedReceipts(); toggleDropdown(event)">
-                    <i class="fas fa-download" style="color:var(--primary);"></i> Downloaded Receipts
-                </li>
-                <li onclick="savedReceipts(); toggleDropdown(event)">
-                    <i class="fas fa-receipt" style="color:var(--primary);"></i> Saved Receipts
-                </li>
-            </ul>
+
+<div class="sticky-continer">
+    <div class="menu-btn" id="menu-btn">
+        <i class="fa fa-bars" onclick="toggleDropdown(event)"></i>
+        <ul id="dropdown">
+            <li onclick="openModal('statements'); closeDropdown()">
+                <i class="fas fa-file-invoice-dollar" style="color:var(--primary);"></i> View Statements
+            </li>
+            <li onclick="openModal('drafts'); closeDropdown()">
+                <i class="fas fa-save" style="color:var(--primary);"></i> Saved Drafts
+            </li>
+            <li onclick="openModal('profile'); closeDropdown()">
+                <i class="fas fa-user-circle" style="color:var(--primary);"></i> Manage Profile
+            </li>
+            <li onclick="openModal('downloaded'); closeDropdown()">
+                <i class="fas fa-download" style="color:var(--primary);"></i> Downloaded Receipts
+            </li>
+        </ul>
+    </div>
+    <div class="profile-container">
+        <span id="user-display-name">Guest Cashier</span>
+        <i class="fas fa-user-circle" onclick="openModal('profile')"></i>
+    </div>
+</div>
+
+<div class="container">
+    <div class="panel">
+        <h2 style="color:var(--primary); margin-top:10px; text-transform:uppercase;">Tanala Mini Shop</h2>
+        <h4 style="color:var(--primary); margin-bottom:10px; text-transform:uppercase;">Stock Order Import List</h4>
+        <textarea id="bulkData" placeholder="Huletts 1kg&#10;   500g&#10;Polony 2.5kg 1"></textarea>
+        <button class="btn-import" onclick="importItems()">Process &amp; Add</button>
+        <div id="itemList" style="margin-top:20px;"></div>
+        <button style="background:#cbd5e1; color:#1e293b; font-size:11px;" onclick="addEmpty()">+ Add Row Manually</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px;">
+            <input type="text" id="store" value="Tanala Mini Shop">
+            <input type="text" id="client" value="Valued Customer">
+            <input type="number" id="tax" value="0.00" placeholder="Tax %">
+            <input type="number" id="paid" placeholder="Cash Paid">
+        </div>
+        <button class="btn-view" onclick="viewImage()"><i class="fas fa-image"></i> View/Download Receipt</button>
+        <button class="btn-share" onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i> Share to WhatsApp</button>
+        <button style="background:#3b82f6;" onclick="printReceipt()"><i class="fas fa-print"></i> Print Receipt</button>
+        <button style="background:#ef4444;" onclick="handleClearCart()">Clear All Carts</button>
+    </div>
+
+    <div class="preview-side">
+        <div id="receipt-box">
+            <!-- Receipt rendered here by JS -->
+            <div class="receipt-header">
+                <h1 id="r-store">Tanala Mini Shop</h1>
+                <p id="r-date"></p>
+            </div>
+            <div class="receipt-divider-dashed"></div>
+            <div class="receipt-client"><b>CLIENT:</b> <span id="r-client">Valued Customer</span></div>
+            <table class="receipt-table">
+                <thead>
+                    <tr>
+                        <th>ORDER ITEMS</th>
+                        <th style="text-align:right;">QTY</th>
+                        <th style="text-align:right;">EACH</th>
+                        <th style="text-align:right;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody id="r-items"></tbody>
+            </table>
+            <div class="receipt-divider-solid"></div>
+            <div class="receipt-total-row">
+                <span>TOTAL</span><span id="r-total">R 0.00</span>
+            </div>
+            <div id="r-change-row" class="receipt-change-row" style="display:none;">
+                <span id="r-paid-txt"></span><span id="r-change-txt"></span>
+            </div>
+            <div class="receipt-footer">
+                <div id="qr-place"></div>
+                <p>SCAN TO VISIT OUR WEBSITE</p>
+                <p class="by-line">Prepared by <strong id="r-cashier">Yitbarek Zewde</strong></p>
+            </div>
+        </div>
+        <button style="background:#3b82f6; margin-top:15px;" onclick="window.downloadReceipt()">Download Receipt</button>
+        <button style="background:#3b82f6; margin-top:8px;" onclick="saveReceipt()">Save Receipt</button>
+    </div>
+
+    <button class="btn-save" onclick="saveCurrentDraft()"><i class="fas fa-save"></i> Save Current as Draft</button>
+    <div class="drafts-section">
+        <h5 style="margin-bottom:5px; color:#475569;">Saved Drafts / Active Worksheets</h5>
+        <div id="draftsList"></div>
+    </div>
+</div>
+
+<div style="text-align:center; margin-top:20px; font-size:10px; color:#f71f02;">
+    &copy; 2026 Tanala Mini Shop. All rights reserved.
+</div>
+
+<!-- UNIFIED MODAL -->
+<div id="mainModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <div class="modal-tabs">
+            <div class="modal-tab active" id="tab-statements" onclick="switchTab('statements')">
+                <i class="fas fa-file-invoice-dollar"></i>Statements
+            </div>
+            <div class="modal-tab" id="tab-drafts" onclick="switchTab('drafts')">
+                <i class="fas fa-save"></i>Saved Drafts
+            </div>
+            <div class="modal-tab" id="tab-profile" onclick="switchTab('profile')">
+                <i class="fas fa-user-circle"></i>Profile
+            </div>
+            <div class="modal-tab" id="tab-downloaded" onclick="switchTab('downloaded')">
+                <i class="fas fa-download"></i>Downloaded
+            </div>
         </div>
 
-        <div class="profile-container">
-            <span id="user-display-name">Guest Cashier</span>
-            <i class="fas fa-user-circle" id="upload-picture" onclick="openProfileModal()"></i>
-        </div>
-    </div>
-</div>
-      <div class="profile-container">
-                <span id="user-display-name">Guest Cashier</span>
-                <i class="fas fa-user-circle" id="upload-picture" onclick="openProfileModal()"></i>
-            </div>
-    </div>
-</div>
-    <div class="container">
-        <div class="panel">
-            <h2 style="color: var(--primary); margin-top: 10px; text-transform: uppercase;">Tanala Mini Shop</h2>
-            <h4 style="color: var(--primary); margin-bottom: 10px; text-transform: uppercase;">Stock Order Import List
+        <!-- TAB 1: STATEMENTS -->
+        <div class="modal-panel active" id="panel-statements">
+            <h4 style="color:var(--dark); margin-bottom:10px;">
+                <i class="fas fa-file-invoice-dollar" style="color:var(--primary);"></i> Order Statement History
             </h4>
-            <textarea id="bulkData" placeholder="Huletts 1kg&#10;   500g&#10;Polony 2.5kg 1"></textarea>
-            <button class="btn-import" onclick="importItems()">Process & Add</button>
-
-            <div id="itemList" style="margin-top:20px;"></div>
-            <button style="background:#cbd5e1; color:#1e293b; font-size:11px;" onclick="addEmpty()">+ Add Row
-                Manually</button>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px;">
-                <input type="text" id="store" value="Tanala Mini Shop">
-                <input type="text" id="client" value="Valued Customer">
-                <input type="number" id="tax" value="0.00" placeholder="Tax %">
-                <input type="number" id="paid" placeholder="Cash Paid">
+            <div style="overflow-x:auto;">
+                <table class="statement-table">
+                    <thead><tr><th>Date/Time</th><th>Client</th><th>Items</th><th>Total (ZAR)</th></tr></thead>
+                    <tbody id="statement-rows"></tbody>
+                </table>
             </div>
-            <!--hiden by deffalt//-->
-            <button class="btn-view" onclick="viewImage()"><i class="fas fa-image"></i> View/Download Receipt</button>
-
-            <button class="btn-share" onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i> Share to
-                WhatsApp</button>
-            <button style="background:#3b82f6;" onclick="printReceipt();"><i class="fas fa-print"></i> Print
-                Receipt</button>
-            <button style="background:#ef4444;" class="clear-all-carts" onclick="handleClearCart()">Clear All
-                Carts</button>
         </div>
 
-        <div class="preview-side">
-            <div id="receipt-box">
-                <div id="receipt-ui"></div>
-            </div>
-            <button style="background:#3b82f6; margin-top:15px;" onclick="window.downloadReceipt()">Download
-                Receipt</button>
+        <!-- TAB 2: SAVED DRAFTS -->
+        <div class="modal-panel" id="panel-drafts">
+            <h4 style="color:var(--dark); margin-bottom:10px;">
+                <i class="fas fa-save" style="color:var(--primary);"></i> Saved Drafts / Active Worksheets
+            </h4>
+            <button class="btn-save" onclick="saveCurrentDraft()" style="margin-bottom:12px;">
+                <i class="fas fa-save"></i> Save Current Cart as Draft
+            </button>
+            <div id="modalDraftsList"></div>
         </div>
-        <div class="saveReceipt">
-            <button style="background:#3b82f6; margin-top:15px;" onclick="saveReceipt()">Save Receipt</button>
-        </div>
 
-        <button class="btn-save" onclick="saveCurrentDraft()"><i class="fas fa-save"></i> Save Current as
-            Draft</button>
-        <div class="drafts-section">
-            <h5 style="margin-bottom: 5px; color:#475569;">Saved Drafts / Active Worksheets</h5>
-            <div id="draftsList"></div>
-        </div>
-       
-    </div>
-
-    <div style="text-align:center; margin-top:20px; font-size:10px; color:#f71f02;">
-        &copy; 2026 Tanala Mini Shop. All rights reserved.
-    </div>
-
-    <div id="authModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="toggleModal(false)">&times;</span>
-
-            <div id="profile-active-view" style="display: none;">
-                <h3 style="color: var(--dark); margin-bottom: 5px;"><i class="fas fa-id-card"
-                        style="color:var(--primary);"></i> Cashier Profile</h3>
-                <p style="font-size: 14px; margin-bottom: 2px;"><strong>Name:</strong> <span id="prof-name"></span></p>
-                <p style="font-size: 14px; margin-bottom: 15px;"><strong>Email:</strong> <span id="prof-email"></span>
-                </p>
-                <button onclick="logoutUser()"
-                    style="background:#ef4444; padding:6px 12px; font-size:11px; width:auto; margin-top:0; margin-bottom:20px;">Sign
-                    Out / Clear User</button>
-
-                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 15px;">
-
-                <h4 style="color: var(--dark); margin-bottom: 10px;"><i class="fas fa-file-invoice-dollar"
-                        style="color:var(--primary);"></i> Account Statement & Order History</h4>
-                <div style="overflow-x: auto;">
-                    <table class="statement-table">
-                        <thead>
-                            <tr>
-                                <th>Date/Time</th>
-                                <th>Client Name</th>
-                                <th>Item Details</th>
-                                <th>Total (ZAR)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="statement-rows">
-                        </tbody>
-                    </table>
-                </div>
+        <!-- TAB 3: PROFILE -->
+        <div class="modal-panel" id="panel-profile">
+            <div id="profile-active-view" style="display:none;">
+                <h3 style="color:var(--dark); margin-bottom:8px;">
+                    <i class="fas fa-id-card" style="color:var(--primary);"></i> Cashier Profile
+                </h3>
+                <p style="font-size:14px; margin-bottom:4px;"><strong>Name:</strong> <span id="prof-name"></span></p>
+                <p style="font-size:14px; margin-bottom:16px;"><strong>Email:</strong> <span id="prof-email"></span></p>
+                <button onclick="logoutUser()" style="background:#ef4444; padding:6px 12px; font-size:11px; width:auto; margin-top:0;">
+                    Sign Out / Clear User
+                </button>
             </div>
-
-
-            <button class="btn-save" onclick="saveCurrentDraft()"><i class="fas fa-save"></i> Save Current as
-                Draft</button> 
-            <div class="drafts-section">
-                <h5 style="margin-bottom: 5px; color:#475569;">Saved Drafts / Active Worksheets</h5>
-                <div id="draftsList"></div>
-            </div>
-
-
             <div id="profile-setup-view">
-                <h3 style="margin-bottom: 15px; color: var(--dark);">Account Setup</h3>
-
+                <h3 style="margin-bottom:15px; color:var(--dark);">Account Setup</h3>
                 <div id="g_id_onload"
                     data-client_id="140939199464-qebi1pvbll1q8e4e861pckst38t8e7n3.apps.googleusercontent.com"
-                    data-callback="handleCredentialResponse" data-auto_prompt="false">
+                    data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
+                <div class="g_id_signin" data-type="standard" style="margin-bottom:15px;"></div>
+                <div style="border-top:1px solid #e2e8f0; margin:15px 0; position:relative; text-align:center;">
+                    <span style="position:absolute; top:-10px; background:white; padding:0 10px; font-size:12px; color:#94a3b8; left:43%;">OR</span>
                 </div>
-                <div class="g_id_signin" data-type="standard" style="margin-bottom: 15px;"></div>
-
-                <div style="border-top: 1px solid #e2e8f0; margin: 15px 0; position: relative; text-align: center;">
-                    <span
-                        style="position: absolute; top: -10px; background: white; padding: 0 10px; font-size: 12px; color: #94a3b8; left: 43%;">OR</span>
-                </div>
-
                 <form id="profileForm" onsubmit="saveManualProfile(event)">
-                    <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">Cashier /
-                        Owner Name</label>
+                    <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">Cashier / Owner Name</label>
                     <input type="text" id="regName" placeholder="e.g. Yitbarek Zewde" required>
-
-                    <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">Shop Contact
-                        Email</label>
+                    <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">Shop Contact Email</label>
                     <input type="email" id="regEmail" placeholder="name@example.com" required>
-
-                    <button type="submit" style="background: var(--primary);">Save Profile Details</button>
+                    <button type="submit" style="background:var(--primary);">Save Profile Details</button>
                 </form>
             </div>
         </div>
+
+        <!-- TAB 4: DOWNLOADED RECEIPTS -->
+        <div class="modal-panel" id="panel-downloaded">
+            <h4 style="color:var(--dark); margin-bottom:10px;">
+                <i class="fas fa-download" style="color:var(--primary);"></i> Downloaded / Saved Receipt Images
+            </h4>
+            <p style="font-size:11px; color:#64748b; margin-bottom:12px;">
+                Receipts saved via <b>Save Receipt</b> appear here as image snapshots.
+            </p>
+            <div id="downloadedList"></div>
+        </div>
     </div>
+</div>
 
-    <script>
-        let cart = [];
-        let currentUser = null;
-
-        // Run when core file structures instantiate inside page DOM
-        window.onload = function () {
-            loadUserData();
-            loadDrafts();
-            cart = [{ id: 1, name: 'Sample Product', price: 1, qty: 1 }];
-            render();
-            document.querySelectorAll('input').forEach(el => el.oninput = updateUI);
-        };
-
-        function loadUserData() {
-            const savedUser = localStorage.getItem('p3_user_profile');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                document.getElementById('user-display-name').innerText = currentUser.name;
-            } else {
-                currentUser = { name: "Yitbarek Zewde", email: "yitbarek537zewde@gmail.com" };
-                document.getElementById('user-display-name').innerText = currentUser.name;
-            }
-            updateUI();
-        }
-
-        function toggleModal(show) {
-            document.getElementById('authModal').style.display = show ? 'flex' : 'none';
-        }
-
-        function openProfileModal() {
-            const setupView = document.getElementById('profile-setup-view');
-            const activeView = document.getElementById('profile-active-view');
-
-            const registrationCheck = localStorage.getItem('p3_user_profile');
-
-            if (registrationCheck) {
-                const parsedUser = JSON.parse(registrationCheck);
-                document.getElementById('prof-name').innerText = parsedUser.name;
-                document.getElementById('prof-email').innerText = parsedUser.email;
-
-                buildStatementRows();
-
-                setupView.style.display = "none";
-                activeView.style.display = "block";
-            } else {
-                setupView.style.display = "block";
-                activeView.style.display = "none";
-            }
-            toggleModal(true);
-        }
-
-        function buildStatementRows() {
-            const tbody = document.getElementById('statement-rows');
-            const drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
-
-            if (drafts.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No statement entries found. Create and save drafts to populate history.</td></tr>`;
-                return;
-            }
-
-            let htmlStr = "";
-            drafts.forEach(d => {
-                let itemsReport = d.cart.map(item => `• ${item.name} (x${item.qty}) @ R${parseFloat(item.price || 0).toFixed(2)}`).join('<br>');
-
-                let sub = d.cart.reduce((s, i) => s + (parseFloat(i.price || 0) * parseInt(i.qty || 1)), 0);
-                let txVal = sub * (parseFloat(d.tax || 0) / 100);
-                let totalVal = sub + txVal;
-
-                htmlStr += `
-                <tr>
-                    <td style="white-space: nowrap;">${d.timestamp}</td>
-                    <td><b>${d.client}</b><br><small style="color:#64748b;">Store: ${d.store}</small></td>
-                    <td style="color:#334155; font-family: monospace; font-size:11px;">${itemsReport}</td>
-                    <td style="text-align: right; font-weight: bold; color: var(--dark);">R ${totalVal.toFixed(2)}</td>
-                </tr>
-            `;
+<script>
+// ══════════════════════════════════════════════════
+// FIXED QR CODE HANDLER - no conflict with external library
+// ══════════════════════════════════════════════════
+function drawQRCode(element, text, size) {
+    if (!element) return;
+    element.innerHTML = '';
+    size = size || 80;
+    
+    // Try to use the external QRCode library if available
+    if (typeof QRCode !== 'undefined' && typeof QRCode === 'function') {
+        try {
+            new QRCode(element, {
+                text: text,
+                width: size,
+                height: size,
+                correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.L : 1
             });
-            tbody.innerHTML = htmlStr;
+            return;
+        } catch(e) { console.warn("External QR failed, using fallback", e); }
+    }
+    
+    // Fallback: Draw a styled canvas placeholder (visual only)
+    var canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#000000';
+    // Simple pattern
+    var block = Math.floor(size / 8);
+    for (var i = 0; i < 8; i++) {
+        for (var j = 0; j < 8; j++) {
+            if ((i+j) % 2 === 0) {
+                ctx.fillRect(i*block, j*block, block-1, block-1);
+            }
         }
+    }
+    // Corner markers
+    ctx.fillStyle = '#000';
+    ctx.fillRect(2, 2, block*2, block*2);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(2+block/2, 2+block/2, block, block);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(size-block*2-2, 2, block*2, block*2);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(size-block*2-2+block/2, 2+block/2, block, block);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(2, size-block*2-2, block*2, block*2);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(2+block/2, size-block*2-2+block/2, block, block);
+    
+    element.appendChild(canvas);
+}
 
-        function saveManualProfile(e) {
-            e.preventDefault();
-            const profileObj = {
-                name: document.getElementById('regName').value,
-                email: document.getElementById('regEmail').value
-            };
-            localStorage.setItem('p3_user_profile', JSON.stringify(profileObj));
-            currentUser = profileObj;
-            document.getElementById('user-display-name').innerText = currentUser.name;
-            openProfileModal();
-            updateUI();
-        }
+let cart = [];
+let currentUser = null;
 
-        function logoutUser() {
-            localStorage.removeItem('p3_user_profile');
-            currentUser = { name: "Yitbarek Zewde", email: "yitbarek537zewde@gmail.com" };
-            document.getElementById('user-display-name').innerText = currentUser.name;
-            openProfileModal();
-            updateUI();
-        }
+window.onload = function () {
+    loadUserData();
+    loadDrafts();
+    cart = [{ id: 1, name: 'Sample Product', price: 1, qty: 1 }];
+    render();
+    ['store','client','tax','paid'].forEach(id => {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateUI);
+    });
+};
 
-        function parseJwt(token) {
-            var base64Url = token.split('.')[1];
-            var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            return JSON.parse(jsonPayload);
-        }
+// ── USER / PROFILE ──
+function loadUserData() {
+    var saved = localStorage.getItem('p3_user_profile');
+    if (saved) {
+        currentUser = JSON.parse(saved);
+    } else {
+        currentUser = { name: "Yitbarek Zewde", email: "yitbarek537zewde@gmail.com" };
+    }
+    document.getElementById('user-display-name').innerText = currentUser.name;
+    updateUI();
+}
 
-        function handleCredentialResponse(response) {
-            const responsePayload = parseJwt(response.credential);
-            const profileObj = {
-                name: responsePayload.name,
-                email: responsePayload.email
-            };
-            localStorage.setItem('p3_user_profile', JSON.stringify(profileObj));
-            currentUser = profileObj;
-            document.getElementById('user-display-name').innerText = currentUser.name;
-            openProfileModal();
-            updateUI();
-        }
+function saveManualProfile(e) {
+    e.preventDefault();
+    var profileObj = {
+        name: document.getElementById('regName').value,
+        email: document.getElementById('regEmail').value
+    };
+    localStorage.setItem('p3_user_profile', JSON.stringify(profileObj));
+    currentUser = profileObj;
+    document.getElementById('user-display-name').innerText = currentUser.name;
+    renderProfileTab();
+    updateUI();
+}
 
-        // Draft Management Features
-        function saveCurrentDraft() {
-            if (cart.length === 0) return alert("Cart is empty. Nothing to save!");
-            let drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
-            const draftMetaData = {
+function logoutUser() {
+    localStorage.removeItem('p3_user_profile');
+    currentUser = { name: "Yitbarek Zewde", email: "yitbarek537zewde@gmail.com" };
+    document.getElementById('user-display-name').innerText = currentUser.name;
+    renderProfileTab();
+    updateUI();
+}
+
+function parseJwt(token) {
+    var b = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    return JSON.parse(decodeURIComponent(atob(b).split('').map(function(c){
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join('')));
+}
+
+function handleCredentialResponse(response) {
+    var p = parseJwt(response.credential);
+    var profileObj = { name: p.name, email: p.email };
+    localStorage.setItem('p3_user_profile', JSON.stringify(profileObj));
+    currentUser = profileObj;
+    document.getElementById('user-display-name').innerText = currentUser.name;
+    renderProfileTab();
+    updateUI();
+}
+
+// ── MODAL SYSTEM ──
+function openModal(tab) {
+    document.getElementById('mainModal').style.display = 'flex';
+    switchTab(tab);
+}
+function closeModal() {
+    document.getElementById('mainModal').style.display = 'none';
+}
+function switchTab(tab) {
+    document.querySelectorAll('.modal-tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.modal-panel').forEach(function(p){ p.classList.remove('active'); });
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+    if (tab === 'statements') buildStatementRows();
+    if (tab === 'drafts') renderModalDrafts();
+    if (tab === 'profile') renderProfileTab();
+    if (tab === 'downloaded') renderDownloadedReceipts();
+}
+
+// ── TAB 1: STATEMENTS ──
+function buildStatementRows() {
+    var tbody = document.getElementById('statement-rows');
+    var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+    var statDrafts = drafts.filter(function(d){ return d.cart && d.cart.length > 0; });
+    if (statDrafts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><i class="fas fa-inbox"></i><p>No statements yet.<br>Save drafts with items to populate history.</p></div></td></tr>';
+        return;
+    }
+    tbody.innerHTML = statDrafts.map(function(d) {
+        var items = d.cart.map(function(i){ return '&bull; '+i.name+' (x'+i.qty+') @ R'+parseFloat(i.price||0).toFixed(2); }).join('<br>');
+        var sub = d.cart.reduce(function(s,i){ return s + parseFloat(i.price||0)*parseInt(i.qty||1); }, 0);
+        var total = sub + sub*(parseFloat(d.tax||0)/100);
+        return '<tr><td style="white-space:nowrap;font-size:11px;">'+d.timestamp+'</td><td><b>'+d.client+'</b><br><small style="color:#64748b;">'+d.store+'</small></td><td style="font-family:monospace;font-size:10px;color:#334155;">'+items+'</td><td style="text-align:right;font-weight:bold;color:var(--dark);">R '+total.toFixed(2)+'</td></tr>';
+    }).join('');
+}
+
+// ── TAB 2: SAVED DRAFTS ──
+function renderModalDrafts() {
+    var container = document.getElementById('modalDraftsList');
+    var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+    var cartDrafts = drafts.filter(function(d){ return d.cart && d.cart.length > 0; });
+    if (cartDrafts.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i><p>No saved drafts yet.<br>Use &ldquo;Save Current Cart as Draft&rdquo; to save your work.</p></div>';
+        return;
+    }
+    container.innerHTML = cartDrafts.map(function(d) {
+        var sub = d.cart.reduce(function(s,i){ return s + parseFloat(i.price||0)*parseInt(i.qty||1); }, 0);
+        var total = (sub + sub*(parseFloat(d.tax||0)/100)).toFixed(2);
+        return '<div class="draft-item"><div><b>'+d.client+'</b><div style="color:#64748b;font-size:11px;">'+d.timestamp+' &mdash; '+d.cart.length+' item(s) &mdash; R'+total+'</div></div><div class="draft-actions"><i class="fas fa-folder-open" style="color:var(--primary);" onclick="restoreDraft('+d.id+'); closeModal();" title="Load into cart"></i><i class="fas fa-trash-alt" style="color:#ef4444;" onclick="deleteDraft('+d.id+')" title="Delete draft"></i></div></div>';
+    }).join('');
+}
+
+// ── TAB 3: PROFILE ──
+function renderProfileTab() {
+    var setupView = document.getElementById('profile-setup-view');
+    var activeView = document.getElementById('profile-active-view');
+    var saved = localStorage.getItem('p3_user_profile');
+    if (saved) {
+        var u = JSON.parse(saved);
+        document.getElementById('prof-name').innerText = u.name;
+        document.getElementById('prof-email').innerText = u.email;
+        activeView.style.display = 'block';
+        setupView.style.display = 'none';
+    } else {
+        activeView.style.display = 'none';
+        setupView.style.display = 'block';
+    }
+}
+
+// ── TAB 4: DOWNLOADED RECEIPTS ──
+function renderDownloadedReceipts() {
+    var container = document.getElementById('downloadedList');
+    var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+    var imgReceipts = drafts.filter(function(d){ return d.image; });
+    if (imgReceipts.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-image"></i><p>No saved receipt images yet.<br>Use the <b>Save Receipt</b> button to snapshot a receipt here.</p></div>';
+        return;
+    }
+    container.innerHTML = imgReceipts.map(function(d) {
+        return '<div class="downloaded-item"><img src="'+d.image+'" alt="Receipt" onclick="viewReceiptImage('+d.id+')" title="Click to view full size"><div class="downloaded-item-info"><b>'+d.client+'</b><p>'+d.store+'</p><p style="margin-top:4px;">'+d.timestamp+'</p></div><div class="downloaded-item-actions"><button style="background:var(--dark);" onclick="viewReceiptImage('+d.id+')"><i class="fas fa-eye"></i> View</button><button style="background:#ef4444;" onclick="deleteDownloadedReceipt('+d.id+')"><i class="fas fa-trash-alt"></i> Delete</button></div></div>';
+    }).join('');
+}
+
+function viewReceiptImage(id) {
+    var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+    var entry = drafts.find(function(d){ return d.id == id; });
+    if (entry && entry.image) {
+        var w = window.open('', '_blank');
+        w.document.write('<html><body style="margin:0;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="'+entry.image+'" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>');
+    }
+}
+
+function deleteDownloadedReceipt(id) {
+    if (!confirm("Delete this saved receipt image?")) return;
+    var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+    drafts = drafts.filter(function(d){ return d.id != id; });
+    localStorage.setItem('p3_pos_drafts', JSON.stringify(drafts));
+    renderDownloadedReceipts();
+}
+
+// ── DRAFT MANAGEMENT ──
+function saveCurrentDraft() {
+    if (cart.length === 0) return alert("Cart is empty. Nothing to save!");
+    var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+    drafts.push({
+        id: Date.now(),
+        timestamp: new Date().toLocaleString(),
+        store: document.getElementById('store').value,
+        client: document.getElementById('client').value,
+        tax: document.getElementById('tax').value,
+        paid: document.getElementById('paid').value,
+        cart: JSON.parse(JSON.stringify(cart))
+    });
+    localStorage.setItem('p3_pos_drafts', JSON.stringify(drafts));
+    loadDrafts();
+    alert("Draft saved!");
+}
+
+function loadDrafts() {
+    var container = document.getElementById('draftsList');
+    var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+    var cartDrafts = drafts.filter(function(d){ return d.cart && d.cart.length > 0; });
+    if (cartDrafts.length === 0) {
+        container.innerHTML = '<p style="font-size:11px; color:#94a3b8;">No drafts available.</p>';
+        return;
+    }
+    container.innerHTML = cartDrafts.map(function(d) {
+        return '<div class="draft-item"><span><b>'+d.client+'</b> ('+d.timestamp+')</span><div class="draft-actions"><i class="fas fa-folder-open" style="color:var(--primary);" onclick="restoreDraft('+d.id+')" title="Load draft"></i><i class="fas fa-trash-alt" style="color:#ef4444;" onclick="deleteDraft('+d.id+')" title="Delete draft"></i></div></div>';
+    }).join('');
+}
+
+function restoreDraft(id) {
+    var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+    var target = drafts.find(function(x){ return x.id == id; });
+    if (target) {
+        document.getElementById('store').value = target.store;
+        document.getElementById('client').value = target.client;
+        document.getElementById('tax').value = target.tax;
+        document.getElementById('paid').value = target.paid;
+        cart = target.cart;
+        render();
+    }
+}
+
+function deleteDraft(id) {
+    var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+    drafts = drafts.filter(function(x){ return x.id != id; });
+    localStorage.setItem('p3_pos_drafts', JSON.stringify(drafts));
+    loadDrafts();
+    renderModalDrafts();
+}
+
+// ── CART ──
+function importItems() {
+    var lines = document.getElementById('bulkData').value.split('\n');
+    lines.forEach(function(line) {
+        if (!line.trim()) return;
+        var leading = line.match(/^\s*/)[0];
+        var parts = line.trim().split(/\s+/);
+        var qty = 1;
+        if (parts.length > 1 && /^\d+$/.test(parts[parts.length-1])) qty = parseInt(parts.pop());
+        cart.push({ id: Date.now() + Math.random(), name: leading + parts.join(' '), price: '', qty: qty });
+    });
+    document.getElementById('bulkData').value = '';
+    render();
+}
+
+function render() {
+    document.getElementById('itemList').innerHTML = cart.map(function(i) {
+        return '<div class="item-row"><input type="text" value="'+escHtml(i.name)+'" onchange="upd('+i.id+',\'name\',this.value)"><input type="number" placeholder="Price" value="'+i.price+'" oninput="upd('+i.id+',\'price\',this.value)"><input type="number" class="qty-box" value="'+i.qty+'" oninput="upd('+i.id+',\'qty\',this.value)"><i class="fas fa-trash-alt" style="color:#ef4444;cursor:pointer;" onclick="del('+i.id+')"></i></div>';
+    }).join('');
+    updateUI();
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function upd(id, f, v) { var i = cart.find(function(x){ return x.id === id; }); if (i) i[f] = v; updateUI(); }
+function del(id) { cart = cart.filter(function(x){ return x.id !== id; }); render(); }
+function addEmpty() { cart.push({ id: Date.now(), name: "Item", price: '', qty: 1 }); render(); }
+function handleClearCart() { if (confirm("Clear all items?")) { cart = []; render(); } }
+
+// ── RECEIPT RENDER (DOM-based, always works) ──
+function updateUI() {
+    var sub = cart.reduce(function(s,i){ return s + parseFloat(i.price||0)*parseInt(i.qty||1); }, 0);
+    var txVal = sub * (parseFloat(document.getElementById('tax').value||0)/100);
+    var total = sub + txVal;
+    var pd = parseFloat(document.getElementById('paid').value) || 0;
+    var storeName = document.getElementById('store').value;
+    var clientName = document.getElementById('client').value;
+
+    // Update receipt DOM elements directly
+    document.getElementById('r-store').textContent = storeName;
+    document.getElementById('r-date').textContent = new Date().toLocaleString();
+    document.getElementById('r-client').textContent = clientName;
+    document.getElementById('r-total').textContent = 'R ' + total.toFixed(2);
+    document.getElementById('r-cashier').textContent = currentUser ? currentUser.name : 'Yitbarek Zewde';
+
+    // Items
+    var tbody = document.getElementById('r-items');
+    tbody.innerHTML = cart.map(function(i) {
+        var ep = parseFloat(i.price||0);
+        var it = ep * parseInt(i.qty||1);
+        return '<tr><td class="receipt-item-name">'+escHtml(i.name)+'</td><td style="text-align:right;">'+i.qty+'</td><td style="text-align:right;">'+ep.toFixed(2)+'</td><td style="text-align:right;">'+it.toFixed(2)+'</td></tr>';
+    }).join('');
+
+    // Change row
+    var changeRow = document.getElementById('r-change-row');
+    if (pd > 0) {
+        document.getElementById('r-paid-txt').textContent = 'PAID: R ' + pd.toFixed(2);
+        document.getElementById('r-change-txt').textContent = 'CHANGE: R ' + (pd - total).toFixed(2);
+        changeRow.style.display = 'flex';
+    } else {
+        changeRow.style.display = 'none';
+    }
+
+    // QR code - FIXED: using the non-conflicting function
+    var qrPlace = document.getElementById('qr-place');
+    if (qrPlace) {
+        drawQRCode(qrPlace, 'https://yitbarek-zewde.vercel.app/', 80);
+    }
+}
+
+// ── RECEIPT ACTIONS ──
+async function generateBlob() {
+    if (typeof html2canvas === 'undefined') {
+        throw new Error('html2canvas not available');
+    }
+    var canvas = await html2canvas(document.getElementById('receipt-box'), { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+    return new Promise(function(r){ canvas.toBlob(r, 'image/png'); });
+}
+
+async function viewImage() {
+    try {
+        var blob = await generateBlob();
+        window.open(URL.createObjectURL(blob), '_blank');
+    } catch(e) { alert("Could not generate image: " + e.message); }
+}
+
+async function shareToWhatsApp() {
+    try {
+        var blob = await generateBlob();
+        var file = new File([blob], 'receipt.png', { type: 'image/png' });
+        if (navigator.share) await navigator.share({ files: [file], title: 'My Receipt' });
+        else alert("Sharing not supported. Please download instead.");
+    } catch(e) { alert("Receipt sharing failed: " + e.message); }
+}
+
+window.downloadReceipt = async function () {
+    try {
+        var blob = await generateBlob();
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'receipt.png';
+        a.click();
+    } catch(e) { alert("Failed to download: " + e.message); }
+};
+
+function saveReceipt() {
+    if (cart.length === 0) return alert("Cart is empty. Nothing to save!");
+    generateBlob().then(function(blob) {
+        var reader = new FileReader();
+        reader.onloadend = function () {
+            var drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
+            drafts.push({
                 id: Date.now(),
                 timestamp: new Date().toLocaleString(),
                 store: document.getElementById('store').value,
                 client: document.getElementById('client').value,
                 tax: document.getElementById('tax').value,
                 paid: document.getElementById('paid').value,
-                cart: cart
-            };
-            drafts.push(draftMetaData);
+                image: reader.result
+            });
             localStorage.setItem('p3_pos_drafts', JSON.stringify(drafts));
-            loadDrafts();
-            alert("Draft successfully preserved!");
+            alert("Receipt image saved! View it in Menu → Downloaded Receipts.");
+        };
+        reader.readAsDataURL(blob);
+    }).catch(function(e){ alert("Could not save receipt image: " + e.message); });
+}
 
+function printReceipt() {
+    var originalReceipt = document.getElementById('receipt-box');
+    if (!originalReceipt) return;
+    var clone = originalReceipt.cloneNode(true);
+    // Convert QR canvas to image for print
+    var origCanvas = document.querySelector('#qr-place canvas');
+    if (origCanvas) {
+        var img = document.createElement('img');
+        img.src = origCanvas.toDataURL('image/png');
+        img.style.cssText = 'width:80px;height:80px;';
+        var qrP = clone.querySelector('#qr-place');
+        if (qrP) { qrP.innerHTML = ''; qrP.appendChild(img); }
+    }
+    var pw = window.open('', '_blank');
+    pw.document.write('<html><head><style>body{font-family:Courier New,monospace;} table{width:100%;border-collapse:collapse;} th,td{font-size:10px;} .receipt-table th{text-align:left;border-bottom:1px solid #000;} .receipt-table td:not(:first-child){text-align:right;} .receipt-total-row{display:flex;justify-content:space-between;font-weight:bold;font-size:17px;} .receipt-change-row{display:flex;justify-content:space-between;font-size:11px;} .receipt-divider-dashed{border-top:1px dashed #000;margin:8px 0;} .receipt-divider-solid{border-top:1px solid #000;margin:8px 0;} #qr-place{text-align:center;} .receipt-footer{text-align:center;} </style></head><body>'+clone.innerHTML+'</body></html>');
+    pw.document.close();
+    pw.print();
+}
 
-
-        
-        }
-        
-
-        function loadDrafts() {
-            const container = document.getElementById('draftsList');
-            let drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
-            if (drafts.length === 0) {
-                container.innerHTML = '<p style="font-size:11px; color:#94a3b8;">No drafts available.</p>';
-                return;
-            }
-            container.innerHTML = drafts.map(d => `
-            <div class="draft-item">
-                <span><b>${d.client}</b> (${d.timestamp})</span>
-                <div class="draft-actions">
-                    <i class="fas fa-folder-open" style="color:var(--primary);" onclick="restoreDraft(${d.id})" title="Load draft"></i>
-                    <i class="fas fa-trash-alt" style="color:#ef4444;" onclick="deleteDraft(${d.id})" title="Delete draft"></i>
-                </div>
-            </div>
-        `).join('');
-        }
-
-        function restoreDraft(id) {
-            let drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
-            let target = drafts.find(x => x.id === id);
-            if (target) {
-                document.getElementById('store').value = target.store;
-                document.getElementById('client').value = target.client;
-                document.getElementById('tax').value = target.tax;
-                document.getElementById('paid').value = target.paid;
-                cart = target.cart;
-                render();
-            }
-        }
-
-        function deleteDraft(id) {
-            let drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
-            drafts = drafts.filter(x => x.id !== id);
-            localStorage.setItem('p3_pos_drafts', JSON.stringify(drafts));
-            loadDrafts();
-        }
-
-        function importItems() {
-            const lines = document.getElementById('bulkData').value.split('\n');
-            lines.forEach(line => {
-                if (!line.trim()) return;
-                const leadingSpaces = line.match(/^\s*/)[0];
-                const cleanLine = line.trim();
-                let parts = cleanLine.split(/\s+/);
-                let qty = 1;
-                if (parts.length > 1) {
-                    const lastPart = parts[parts.length - 1];
-                    if (/^\d+$/.test(lastPart)) qty = parseInt(parts.pop());
-                }
-                cart.push({ id: Date.now() + Math.random(), name: leadingSpaces + parts.join(' '), price: '', qty: qty });
-            });
-            document.getElementById('bulkData').value = '';
-            render();
-        }
-
-        function render() {
-            const list = document.getElementById('itemList');
-            list.innerHTML = cart.map(i => `
-            <div class="item-row">
-                <input type="text" value="${i.name}" onchange="upd(${i.id},'name',this.value)">
-                <input type="number" placeholder="Price" value="${i.price}" oninput="upd(${i.id},'price',this.value)">
-                <input type="number" class="qty-box" value="${i.qty}" oninput="upd(${i.id},'qty',this.value)">
-                <i class="fas fa-trash-alt" style="color:#ef4444; cursor:pointer;" onclick="del(${i.id})"></i>
-            </div>
-        `).join('');
-            updateUI();
-        }
-
-        // Direct object key state updates
-        function upd(id, f, v) { let item = cart.find(x => x.id === id); if (item) item[f] = v; updateUI(); }
-        function del(id) { cart = cart.filter(x => x.id !== id); render(); }
-        function addEmpty() { cart.push({ id: Date.now(), name: "Item", price: '', qty: 1 }); render(); }
-
-        function updateUI() {
-            let sub = cart.reduce((s, i) => s + (parseFloat(i.price || 0) * parseInt(i.qty || 1)), 0);
-            let txVal = sub * (parseFloat(document.getElementById('tax').value || 0) / 100);
-            let total = sub + txVal;
-            let pd = parseFloat(document.getElementById('paid').value) || 0;
-
-            document.getElementById('receipt-ui').innerHTML = `
-            <div style="text-align:center; color:#000; font-family:'Courier New', monospace;">
-                <h1 style="color:var(--primary); text-transform:uppercase; margin-bottom:5px; font-size:22px;">${document.getElementById('store').value}</h1>
-                <p style="font-size:10px;">${new Date().toLocaleString()}</p>
-                <div style="border-top:1px dashed #000; margin:10px 0;"></div>
-                <p style="text-align:left; font-size:11px;"><b>CLIENT:</b> ${document.getElementById('client').value}</p>
-                
-                <table style="width:100%; margin:15px 0; font-size:10px; border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid #000; font-weight: bold;">
-                            <th style="text-align:left; padding-bottom: 5px;">ORDER ITEMS</th>
-                            <th style="text-align:center; padding-bottom: 5px;">QTY</th>
-                            <th style="text-align:right; padding-bottom: 5px;">EACH</th>
-                            <th style="text-align:right; padding-bottom: 5px;">TOTAL</th>
-                         </tr>
-                    </thead>
-                    <tbody>
-                        ${cart.map(i => {
-                let eachPrice = parseFloat(i.price || 0);
-                let itemTotal = eachPrice * parseInt(i.qty || 1);
-                return `
-                            <tr>
-                                <td class="receipt-item-name">${i.name}</td>
-                                <td style="text-align:center;">${i.qty}</td>
-                                <td style="text-align:right;">${eachPrice.toFixed(2)}</td>
-                                <td style="text-align:right;">${itemTotal.toFixed(2)}</td>
-                            </tr>`;
-            }).join('')}
-                    </tbody>
-                </table>
-
-                <div style="border-top:1px solid #000; padding-top:8px;"></div>
-                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:18px;">
-                    <span>TOTAL</span>
-                    <span>R ${total.toFixed(2)}</span>
-                </div>
-                
-                ${pd > 0 ? `
-                <div style="display:flex; justify-content:space-between; font-size:11px; margin-top:8px;">
-                    <span>PAID: R ${pd.toFixed(2)}</span><span>CHANGE: R ${(pd - total).toFixed(2)}</span>
-                </div>` : ''}
-
-                <div style="margin-top:25px; display:flex; flex-direction:column; align-items:center;">
-                    <div id="qr-place"></div>
-                    <p style="font-size:8px; margin-top:10px; color:#666;">SCAN TO VISIT OUR WEBSITE</p>
-                    <h2 style="font-size: 8px;margin-top:10px; color: #008000;">This receipt is prepared by <strong>${currentUser ? currentUser.name : "Yitbarek Zewde"}</strong><h2>
-                </div>
-            </div>
-        `;
-
-            const qr = new QRious({
-                element: document.createElement('canvas'),
-                value: 'https://yitbarek-zewde.vercel.app/',
-                size: 90
-            });
-            const qrContainer = document.getElementById('qr-place');
-            if (qrContainer) {
-                while (qrContainer.firstChild) qrContainer.removeChild(qrContainer.firstChild);
-                qrContainer.appendChild(qr.image);
-            }
-        }
-        function handleClearCart() {
-            if (confirm("Are you sure you want to clear all items?")) {
-                cart = [];
-                render();
-            }
-        }
-
-        async function generateBlob() {
-            const canvas = await html2canvas(document.getElementById('receipt-box'), { scale: 3, backgroundColor: "#ffffff" });
-            return new Promise(r => canvas.toBlob(r, 'image/png'));
-        }
-
-        async function viewImage() {
-            const blob = await generateBlob();
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
-        }
-
-        async function shareToWhatsApp() {
-            try {
-                const blob = await generateBlob();
-                const file = new File([blob], 'receipt.png', { type: 'image/png' });
-                if (navigator.share) {
-                    await navigator.share({ files: [file], title: 'My Receipt' });
-                } else {
-                    alert("Sharing not supported. please try to download your receipt.");
-                }
-            } catch (e) {
-                alert("Receipt sharing has failed.");
-            }
-        }
-
-        window.downloadReceipt = async function () {
-            try {
-                const blob = await generateBlob();
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'receipt.png';
-                a.click();
-                message("Receipt successfully downloaded በተሳካ ሁነታ ተጭኗል")
-            } catch (e) {
-                alert("Failed to download receipt.");
-            }
-        }
-
-        window.printReceiptOnly = function () {
-            const originalReceipt = document.getElementById('receipt-box');
-            if (!originalReceipt) return;
-
-            const receiptClone = originalReceipt.cloneNode(true);
-            const originalQrCanvas = document.querySelector('#qr-place canvas');
-            let qrImageUrl = '';
-            if (originalQrCanvas) {
-                qrImageUrl = originalQrCanvas.toDataURL('image/png');
-                const img = document.createElement('img');
-                img.src = qrImageUrl;
-                img.style.width = '90px';
-                img.style.height = '90px';
-                const qrPlace = receiptClone.querySelector('#qr-place');
-                if (qrPlace) {
-                    qrPlace.innerHTML = '';
-                    qrPlace.appendChild(img);
-                }
-            }
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(receiptClone.innerHTML);
-            printWindow.document.close();
-            printWindow.print();
-        }
-
-        //print receipt
-        function printReceipt() {
-            window.printReceiptOnly();
-        }
-        //printing size optimization for device printing
-        window.onafterprint = function () {
-            const qrPlace = document.getElementById('qr-place');
-            if (qrPlace) {
-                qrPlace.innerHTML = '';
-                const qr = new QRious({
-                    element: document.createElement('canvas'),
-                    value: 'https://yitbarek-zewde.vercel.app/',
-                    size: 40
-                });
-                qrPlace.appendChild(qr.image);
-            }
-        }
-        // Saving receipt as draft with image snapshot for statement history
-        function saveReceipt() {
-            if (cart.length === 0) return alert("Cart is empty. Nothing to save!");
-            generateBlob().then(blob => {
-                const reader = new FileReader();
-                reader.onloadend = function () {
-                    const base64data = reader.result;
-                    let drafts = JSON.parse(localStorage.getItem('p3_pos_drafts') || '[]');
-                    const draftMetaData = {
-                        id: Date.now(),
-                        timestamp: new Date().toLocaleString(),
-                        store: document.getElementById('store').value,
-                        client: document.getElementById('client').value,
-                        tax: document.getElementById('tax').value,
-                        paid: document.getElementById('paid').value,
-                        image: base64data
-                    };
-                    drafts.push(draftMetaData);
-                    localStorage.setItem('p3_pos_drafts', JSON.stringify(drafts));
-                    alert("Receipt saved as draft.");
-                };
-                reader.readAsDataURL(blob);
-            });
-        }
-        function toggleDropdown() {
-                const dropdown = document.getElementById('dropdown');
-                dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-            }
-            function toggleStatementPanel() {
-                    const modal = document.getElementById('authModal');
-                    const profileView = document.getElementById('profile-active-view');
-                    const setupView = document.getElementById('profile-setup-view');
-    
-                    if (modal.style.display === 'flex' && profileView.style.display === 'block') {
-                        modal.style.display = 'none';
-                    } else {
-                        buildStatementRows();
-                        profileView.style.display = 'block';
-                        setupView.style.display = 'none';
-                        modal.style.display = 'flex';
-                    }
-                }
-                //Downloaded Receipts View
-                function DownloadedReceipts() {
-                    const modal = document.getElementById('authModal');
-                    const profileView = document.getElementById('profile-active-view');
-                    const setupView = document.getElementById('profile-setup-view');
-    
-                    if (modal.style.display === 'flex' && profileView.style.display === 'block') {
-                        modal.style.display = 'none';
-                    } else {
-                        buildStatementRows();
-                        profileView.style.display = 'block';
-                        setupView.style.display = 'none';
-                        modal.style.display = 'flex';
-                    }
-                }
-
-    
-                function toggleDropdown(e) {
-                        if (e) e.stopPropagation();
-                        const dropdown = document.getElementById('dropdown');
-                        const isOpen = dropdown.style.display === 'block';
-                        dropdown.style.display = isOpen ? 'none' : 'block';
-                    }
-
-                    // Close dropdown when clicking anywhere outside
-                    document.addEventListener('click', function (e) {
-                        const menuBtn = document.getElementById('menu-btn');
-                        if (!menuBtn.contains(e.target)) {
-                            document.getElementById('dropdown').style.display = 'none';
-                        }
-                    });
-
-                    //saved receipts
-                    function savedReceipts() {
-                        const modal = document.getElementById('authModal');
-                        const profileView = document.getElementById('profile-active-view');
-                        const setupView = document.getElementById('profile-setup-view');
-        
-                        if (modal.style.display === 'flex' && profileView.style.display === 'block') {
-                            modal.style.display = 'none';
-                        } else {
-                            buildStatementRows();
-                            profileView.style.display = 'block';
-                            setupView.style.display = 'none';
-                            modal.style.display = 'flex';
-                        }
-                    
-
-    </script>
+// ── DROPDOWN ──
+function toggleDropdown(e) {
+    if (e) e.stopPropagation();
+    var dd = document.getElementById('dropdown');
+    dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+}
+function closeDropdown() { document.getElementById('dropdown').style.display = 'none'; }
+document.addEventListener('click', function(e) {
+    if (!document.getElementById('menu-btn').contains(e.target)) closeDropdown();
+});
+</script>
 </body>
-
 </html>
