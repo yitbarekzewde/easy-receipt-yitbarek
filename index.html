@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title> Easy Receipt | 3 POS | Smart QR</title>
+    <title> Easy Receipt | Smart QR</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -69,6 +69,8 @@
         <button class="btn-view" onclick="viewImage()"><i class="fas fa-image"></i> View/Download Receipt</button>
         <button class="btn-share" onclick="shareToWhatsApp()"><i class="fab fa-whatsapp"></i> Share to WhatsApp</button>
         <button style="background:#ef4444;" class="clear-all-carts" onclick="clearAllCarts(); cart = []; render();">Clear All Carts</button>
+        <button style="background:#3b82f6;" onclick="printReceipt();"><i class="fas fa-print"></i> Print
+                Receipt</button>
     </div>
 
     <div class="preview-side">
@@ -228,25 +230,40 @@
             console.error(e);
         }
     }
-     // 1. Find the element with the class 'clear-all-carts'
-        const clearCartButton = document.querySelector('.clear-all-carts');
+     function handleClearCart() {
+            if (confirm("Are you sure you want to clear all items?")) {
+                cart = [];
+                render();
+            }
+        }
+     window.printReceiptOnly = function () {
+            const originalReceipt = document.getElementById('receipt-box');
+            if (!originalReceipt) return;
 
-        // 2. Check if the button actually exists on the page
-        if (clearCartButton) {
-            // 3. Listen for a click event
-            clearCartButton.addEventListener('click', function (event) {
-
-                // 4. Show the built-in browser confirmation box
-                const userConfirmed = confirm("Are you sure you want to clear your cart? This cannot be undone.  ሁሉንም እቃዎች ማጥፋት ይፈልጋሉ? እባክዎ አንዴ OK ብለው ካጠፉ መመለስ እንደማይችሉ ያስተውሉ። ");
-
-                // 5. If the user clicks "Cancel", stop the action
-                if (!userConfirmed) {
-                    event.preventDefault(); // Stops the link/form from triggering
-                } else {
-                    // If they clicked "OK", let the default action happen 
-                    // or trigger your own clear cart logic here.
+            const receiptClone = originalReceipt.cloneNode(true);
+            const originalQrCanvas = document.querySelector('#qr-place canvas');
+            let qrImageUrl = '';
+            if (originalQrCanvas) {
+                qrImageUrl = originalQrCanvas.toDataURL('image/png');
+                const img = document.createElement('img');
+                img.src = qrImageUrl;
+                img.style.width = '90px';
+                img.style.height = '90px';
+                const qrPlace = receiptClone.querySelector('#qr-place');
+                if (qrPlace) {
+                    qrPlace.innerHTML = '';
+                    qrPlace.appendChild(img);
                 }
-            });
+            }
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(receiptClone.innerHTML);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        //print receipt
+        function printReceipt() {
+            window.printReceiptOnly();
         }
 
 
